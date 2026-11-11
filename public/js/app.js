@@ -2,6 +2,7 @@ import {
   SLOT_NAMES, SLOT_ORDER, GRADE_NAMES, IMPACT, buildFor, scoreItem, upgradePath, suggestions, stage, letter,
 } from "./analysis.js";
 import { SLOT_IDEAL } from "./build-data.js";
+import { tabDaevanion } from "./daevanion-ui.js";
 
 const app = document.getElementById("app");
 const REGIONS = { la: "América Latina", nae: "NA Leste", naw: "NA Oeste", eu: "Europa", as: "Ásia" };
@@ -120,7 +121,7 @@ async function loadChar(region, serverId, characterId, refresh = false) {
   return p;
 }
 
-const TABS = [["", "Resumo"], ["equipamento", "Equipamento"], ["build", "Build"], ["progressao", "O que fazer"]];
+const TABS = [["", "Resumo"], ["equipamento", "Equipamento"], ["build", "Build"], ["daevanion", "Daevanion"], ["progressao", "O que fazer"]];
 
 async function profilePage(region, serverId, characterId, tab = "", refresh = false) {
   const ref = { region, serverId, characterId };
@@ -180,7 +181,7 @@ async function profilePage(region, serverId, characterId, tab = "", refresh = fa
   document.getElementById("btn-share").onclick = () => copy(location.href);
 
   const el = document.getElementById("tab");
-  ({ "": tabSummary, equipamento: tabGear, build: tabBuild, progressao: tabProgress }[tab] || tabSummary)(el, data, db, ref);
+  ({ "": tabSummary, equipamento: tabGear, build: tabBuild, progressao: tabProgress, daevanion: (e, d, _db, r) => tabDaevanion(e, d, r) }[tab] || tabSummary)(el, data, db, ref);
 }
 
 async function copy(text) {
@@ -210,7 +211,7 @@ function tabSummary(el, data, db, ref) {
         <a href="${charPath(ref, "progressao")}">Ver lista completa →</a>
       </div>
       <div class="card">
-        <h2>Painéis Daevanion</h2>
+        <div class="toolbar"><h2 style="margin:0">Painéis Daevanion</h2><span class="spacer"></span><a href="${charPath(ref, 'daevanion')}">Ver caminho recomendado →</a></div><div style="height:10px"></div>
         ${data.daevanion.map((b) => `<div class="board"><img src="${esc(b.icon)}" alt="" />
           <div><div class="small"><b>${esc(b.name)}</b> <span class="muted">${b.openNodeCount}/${b.totalNodeCount} nós</span></div>
           <div class="bar"><i style="width:${b.openPercent}%"></i></div></div><b>${b.openPercent}%</b></div>`).join("")}

@@ -7,6 +7,9 @@ Site para você e seus amigos consultarem personagens do **Aion 2** em pt-BR:
 - **Equipamento**: cada item com suas linhas, manastones, uma **nota (S+ a D)** baseada no que importa para dano,
   as linhas ideais do slot e o **próximo upgrade** (próximo tier/nível do item).
 - **Build**: compara suas skills, estigmas e passivas com a build recomendada (Encantador PvE, do Atreia Lens).
+- **Daevanion**: os 6 painéis em grid (aberto, fechado, recomendado), tudo que você já ganhou somado, em qual painel
+  cada ponto rende mais e o **caminho recomendado** nó a nó, calculado a partir dos nós que você já abriu, das skills
+  que você usa (e das que estão abaixo da meta da build) e do foco escolhido (PvE ou PvP).
 - **O que fazer**: lista de ações ordenada por impacto no CP (encantar, superar, trocar itens, manastones,
   linhas ruins, skills, Daevanion, títulos…) com checklist que fica salvo no navegador.
 - **Grupo**: adicione os personagens dos amigos, compare CP lado a lado e compartilhe o grupo por link.
@@ -50,6 +53,7 @@ Railway, Fly.io ou qualquer VPS com Node também funcionam (`PORT` vem da variá
 - **Pesos dos atributos, linhas ideais por slot e builds**: `public/js/build-data.js`.
   Para adicionar a build de outra classe, crie uma entrada em `BUILDS` com a chave em inglês
   (`GLADIATOR`, `TEMPLAR`, `ASSASSIN`, `RANGER`, `SORCERER`, `ELEMENTALIST`, `CLERIC`, `CHANTER`).
+- **Pesos do Daevanion** (PvE/PvP) e custo dos nós: final de `public/js/build-data.js`; algoritmo em `public/js/daevanion.js`.
 - **Regras das sugestões**: `public/js/analysis.js` (função `suggestions`).
 - **Atualizar o banco de itens** depois de um patch:
 

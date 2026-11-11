@@ -124,3 +124,32 @@ export const BUILDS = {
 
 // Peso padrão de uma linha de skill quando a classe não tem build cadastrada
 export const DEFAULT_SKILL_LINE_WEIGHT = 5;
+
+// ---------- Daevanion ----------
+// Valor de cada atributo dos nós Daevanion (0-10) por foco. Chave = nome do atributo como a API devolve
+// (sem o "+valor"). Atributos fora da lista valem DAEVANION_DEFAULT.
+export const DAEVANION_WEIGHTS = {
+  pve: {
+    "Velocidade de Combate": 10, "Amplificação de Dano": 9, "Amplificação de Dano em JvA": 9,
+    "Aumento de Dano contra Chefe": 9, "Amplificação de Dano Crítico": 8, "Acerto de Golpes Múltiplos": 8,
+    "Redução de Tempo de Recarga": 7, "Ataque contra Chefe": 7, "Ataque em JvA": 7, "Ataque Adicional": 7,
+    "Acerto Crítico": 4, "Precisão em JvA": 4,
+    "Tolerância a Dano": 3, "Tolerância a Dano em JvA": 3, "Tolerância a Dano contra Chefe": 3,
+    "Tolerância a Dano Crítico": 2, "Acerto de Alteração de Estado": 2, "PV": 2,
+    "Defesa contra Chefe": 2, "Defesa em JvA": 2, "Evasão em JvA": 2,
+    "Defesa Adicional": 1, "Resistência a Acerto Crítico": 1, "Resistência a Golpes Múltiplos": 1,
+    "Resistência a Alteração de Estado": 1, "PM": 1,
+  },
+  pvp: {
+    "Velocidade de Combate": 10, "Amplificação de Dano em JvJ": 10, "Amplificação de Dano": 9,
+    "Tolerância a Dano em JvJ": 8, "Amplificação de Dano Crítico": 8, "Acerto de Golpes Múltiplos": 8,
+    "Ataque em JvJ": 7, "Redução de Tempo de Recarga": 7, "Ataque Adicional": 7, "Tolerância a Dano": 7,
+    "Acerto Crítico em JvJ": 6, "Precisão em JvJ": 6, "Acerto de Alteração de Estado": 6,
+    "Resistência a Alteração de Estado": 6, "Tolerância a Dano Crítico": 5, "Defesa em JvJ": 5,
+    "Resistência a Acerto Crítico em JvJ": 5, "Evasão em JvJ": 5, "Acerto Crítico": 4, "PV": 4,
+    "Resistência a Golpes Múltiplos": 4, "Resistência a Acerto Crítico": 3, "Defesa Adicional": 3, "PM": 1,
+  },
+};
+export const DAEVANION_DEFAULT = 0;
+// Custo em pontos de cada nó pela raridade (confirmado com os dados do Atreia Lens)
+export const DAEVANION_COST = { Common: 1, Rare: 2, Legend: 3, Unique: 4 };

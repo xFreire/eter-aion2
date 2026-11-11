@@ -244,7 +244,7 @@ export function suggestions(data, gearDb) {
   const boards = daevanion.filter((b) => b.openPercent < 100);
   if (boards.length) out.push({
     cat: "Daevanion", impact: 2, effort: 3, title: "Completar painéis Daevanion",
-    detail: "Cada nó aberto dá atributo permanente (e CP). Os painéis mais avançados costumam ter nós mais fortes, mas completar os quase cheios é mais barato.",
+    detail: "Cada nó aberto dá atributo permanente (e CP). Veja na aba Daevanion qual painel rende mais por ponto e a ordem exata dos nós para a sua build.",
     items: boards.sort((a, b) => b.openPercent - a.openPercent)
       .map((b) => `${b.name}: ${b.openNodeCount}/${b.totalNodeCount} nós (${b.openPercent}%)`),
   });

@@ -135,9 +135,39 @@ async function character(params) {
   return remember(key, value);
 }
 
+// Todos os painéis Daevanion do personagem, com cada nó (posição, efeito, raridade e se está aberto).
+async function daevanion(params) {
+  const char = await character(params); // usa o cache do personagem para saber quais painéis existem
+  const { region, profile } = char;
+  const key = `dv:${region}:${profile.serverId}:${profile.characterId}`;
+  const hit = cache.get(key);
+  if (hit && hit.at >= Date.parse(char.fetchedAt)) return hit.value; // mesmo "retrato" do personagem
+
+  const base = { region, serverId: profile.serverId, characterId: profile.characterId };
+  const boards = await Promise.all(
+    char.daevanion.map(async (b) => {
+      const d = await nc(`${SITE}/api/character/daevanion/detail?${q({ ...base, boardId: b.id })}`).catch(() => null);
+      return {
+        id: b.id, name: b.name, icon: b.icon, open: b.open,
+        openNodeCount: b.openNodeCount, totalNodeCount: b.totalNodeCount, openPercent: b.openPercent,
+        nodes: (d?.nodeList || [])
+          .filter((n) => n.type !== "None")
+          .map((n) => ({
+            id: n.nodeId, row: n.row, col: n.col, type: n.type, grade: n.grade, open: n.open,
+            name: n.name, effects: (n.effectList || []).map((e) => e.desc),
+          })),
+        skillEffects: (d?.openSkillEffectList || []).map((e) => e.desc),
+        statEffects: (d?.openStatEffectList || []).map((e) => e.desc),
+      };
+    }),
+  );
+  return remember(key, { fetchedAt: char.fetchedAt, boards });
+}
+
 const routes = {
   "/api/search": search,
   "/api/character": character,
+  "/api/daevanion": daevanion,
   "/api/servers": (p) => servers(p.get("region") || "la"),
   "/api/regions": async () => REGIONS,
 };
