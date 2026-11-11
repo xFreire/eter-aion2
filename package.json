@@ -1,0 +1,12 @@
+{
+  "name": "atreia-br",
+  "version": "1.0.0",
+  "description": "Consulta de personagens do Aion 2 em português, com análise de equipamento, build e sugestões para subir o CP.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  }
+}
