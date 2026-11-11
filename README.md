@@ -1,4 +1,4 @@
-# Atreia BR — Aion 2 em português
+# Éter — Aion 2 em português
 
 Site para você e seus amigos consultarem personagens do **Aion 2** em pt-BR:
 

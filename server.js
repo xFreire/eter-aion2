@@ -1,4 +1,4 @@
-// Servidor do Aion 2 BR: serve o site e repassa as consultas para a API oficial da NCSoft
+// Servidor do Éter (Aion 2 BR): serve o site e repassa as consultas para a API oficial da NCSoft
 // (a mesma usada pelo armory oficial, kisk.app e afins). O navegador não pode chamar a NCSoft
 // direto (CORS), por isso este proxy. Sem dependências: Node 18+.
 import { createServer } from "node:http";
@@ -186,4 +186,4 @@ createServer(async (req, res) => {
     if (status >= 500) console.error(url.pathname, err.message);
     send(res, status, JSON.stringify({ error: err.message }), "application/json; charset=utf-8");
   }
-}).listen(PORT, () => console.log(`Aion 2 BR rodando em http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`Éter rodando em http://localhost:${PORT}`));

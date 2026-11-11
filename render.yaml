@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: atreia-br
+    name: eter-aion2
     runtime: node
     plan: free
     buildCommand: ""

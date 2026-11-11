@@ -135,7 +135,7 @@ async function profilePage(region, serverId, characterId, tab = "", refresh = fa
     return;
   }
   const p = data.profile;
-  document.title = `${p.characterName} · Atreia BR`;
+  document.title = `${p.characterName} · Éter`;
   const level = data.stats.find((s) => s.type === "ItemLevel")?.value;
   const scored = data.equipment.map((e) => scoreItem(e, buildFor(p))).filter((s) => s?.score != null);
   const avg = scored.length ? Math.round(scored.reduce((a, s) => a + s.score, 0) / scored.length) : null;
@@ -420,7 +420,7 @@ function route() {
   if (parts[0] === "busca" && parts[2]) return searchPage(parts[1], parts[2]);
   if (parts[0] === "p" && parts[3]) return profilePage(parts[1], parts[2], parts[3], parts[4] || "");
   if (parts[0] === "grupo") return groupPage(parts[1]);
-  document.title = "Atreia BR · Aion 2";
+  document.title = "Éter · Aion 2";
   return home();
 }
 
