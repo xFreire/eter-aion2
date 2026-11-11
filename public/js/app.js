@@ -246,7 +246,7 @@ function tabGear(el, data, db) {
     </div>
     <p class="muted small" style="margin:-6px 0 16px">% = relevância da linha para dano (${build ? "build do " + esc(data.profile.className) : "pesos genéricos de DPS"}).
       Nota = linhas do item comparadas a 6 linhas perfeitas. Toque em <b>Ideal</b> para virar o card.</p>
-    <div class="grid items">${items.map((e) => itemCard(e, build, db, data.profile.raceId)).join("")}</div>`;
+    <div class="grid items">${items.map((e, i) => itemCard(e, build, db, data.profile.raceId, i)).join("")}</div>`;
   bindCards(el);
   let all = false;
   el.querySelector("#flip-all").onclick = (ev) => {
@@ -256,26 +256,59 @@ function tabGear(el, data, db) {
   };
 }
 
-// Efeito holográfico (inclinação + brilho seguindo o ponteiro) e virar o card
+// Cards vivos: inclinação com física de mola, brilho que segue o ponteiro e virar o card
 function bindCards(root) {
   root.addEventListener("click", (e) => {
     const t = e.target.closest(".turn");
     if (t) t.closest(".flip").classList.toggle("flipped");
   });
   if (!matchMedia("(hover: hover) and (prefers-reduced-motion: no-preference)").matches) return;
+  const springs = new Map(); // card -> estado da mola
+  let raf = 0;
+  const tick = () => {
+    raf = 0;
+    for (const [card, s] of springs) {
+      for (const k of ["rx", "ry", "mx", "my", "h", "lift"]) {
+        const v = s.v[k] + (s.t[k] - s.c[k]) * 0.09; // força da mola
+        s.v[k] = v * 0.78; // amortecimento
+        s.c[k] += s.v[k];
+      }
+      card.style.setProperty("--rx", `${s.c.rx.toFixed(2)}deg`);
+      card.style.setProperty("--ry", `${s.c.ry.toFixed(2)}deg`);
+      card.style.setProperty("--mx", `${s.c.mx.toFixed(1)}%`);
+      card.style.setProperty("--my", `${s.c.my.toFixed(1)}%`);
+      card.style.setProperty("--hover", s.c.h.toFixed(3));
+      card.style.setProperty("--lift", `${s.c.lift.toFixed(2)}px`);
+      const moving = ["rx", "ry", "h", "lift"].some((k) => Math.abs(s.t[k] - s.c[k]) > 0.01 || Math.abs(s.v[k]) > 0.01);
+      if (!moving && !s.active) springs.delete(card);
+    }
+    if (springs.size) raf = requestAnimationFrame(tick);
+  };
+  const state = (card) => {
+    if (!springs.has(card)) {
+      const z = { rx: 0, ry: 0, mx: 50, my: 50, h: 0, lift: 0 };
+      springs.set(card, { c: { ...z }, v: { rx: 0, ry: 0, mx: 0, my: 0, h: 0, lift: 0 }, t: { ...z }, active: false });
+    }
+    return springs.get(card);
+  };
+  const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
   root.addEventListener("pointermove", (e) => {
-    const c = e.target.closest(".tcard");
-    if (!c) return;
-    const r = c.getBoundingClientRect();
+    const card = e.target.closest(".tcard");
+    if (!card) return;
+    const r = card.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-    c.style.setProperty("--mx", `${x * 100}%`);
-    c.style.setProperty("--my", `${y * 100}%`);
-    c.style.setProperty("--ry", `${(x - 0.5) * 8}deg`);
-    c.style.setProperty("--rx", `${(0.5 - y) * 8}deg`);
+    const s = state(card);
+    s.active = true;
+    Object.assign(s.t, { rx: (0.5 - y) * 10, ry: (x - 0.5) * 12, mx: x * 100, my: y * 100, h: 1, lift: -6 });
+    kick();
   });
   root.addEventListener("pointerout", (e) => {
-    const c = e.target.closest(".tcard");
-    if (c && !c.contains(e.relatedTarget)) { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); }
+    const card = e.target.closest(".tcard");
+    if (!card || card.contains(e.relatedTarget)) return;
+    const s = state(card);
+    s.active = false;
+    Object.assign(s.t, { rx: 0, ry: 0, mx: 50, my: 50, h: 0, lift: 0 });
+    kick();
   });
 }
 
@@ -288,7 +321,7 @@ function idealFor(e, build) {
   return null;
 }
 
-function itemCard(e, build, db, raceId) {
+function itemCard(e, build, db, raceId, idx = 0) {
   const d = e.detail || {};
   const sc = scoreItem(e, build);
   const next = upgradePath(e, db, raceId)[0];
@@ -305,18 +338,18 @@ function itemCard(e, build, db, raceId) {
 
   const mainStats = (d.mainStats || []).slice(0, 4).map((s) =>
     `<span>${esc(s.name)} <b>${esc(s.value)}</b>${s.extra && s.extra !== "0" ? ` <span class="plus">+${esc(s.extra)}</span>` : ""}</span>`).join("");
-  const lines = (sc?.lines || []).map((l) => `
+  const lines = (sc?.lines || []).map((l, li) => `
     <div class="line ${weightClass(l.weight)}">
       <span>${l.kind === "skill" ? '<span class="kind">SKILL</span>' : ""}${esc(l.name)}<span class="val">${esc(l.value)}</span></span>
       <span class="pct" title="Relevância para dano">${l.weight * 10}%</span>
-      <div class="bar"><i style="width:${l.weight * 10}%"></i></div>
+      <div class="bar"><i style="width:${l.weight * 10}%;--d:${li}"></i></div>
     </div>`).join("");
   const stones = (sc?.stones || []).map((s) => `<span class="gem ${weightClass(s.weight)}" title="${esc(s.name)} (${esc(GRADE_NAMES[s.grade] || s.grade)})">${esc(s.name)} ${esc(s.value)}</span>`).join("")
     + `<span class="gem empty">encaixe vazio</span>`.repeat(emptyStones);
 
   const front = `
-    <article class="tcard g-${esc(e.grade)} ${gradeCls}">
-      <div class="foil" aria-hidden="true"></div>
+    <article class="tcard g-${esc(e.grade)} ${gradeCls}" style="--i:${idx}">
+      <div class="foil" aria-hidden="true"></div><div class="sparks" aria-hidden="true"></div><div class="sparks" aria-hidden="true"></div>
       <div class="face">
         <div class="slotname"><span>${esc(slot)}</span><span class="lvl">Nv ${d.level ?? "?"} · ${esc(gradeName)}</span></div>
         <header>
@@ -333,16 +366,16 @@ function itemCard(e, build, db, raceId) {
       </div>
       <div class="glare" aria-hidden="true"></div>
     </article>`;
-  if (!ideal) return `<div class="flip"><div class="flip-inner"><div class="side front">${front}</div></div></div>`;
+  if (!ideal) return `<div class="flip" style="--i:${idx}"><div class="flip-inner"><div class="side front">${front}</div></div></div>`;
 
   const idealLines = ideal.map((x) => {
     const ok = has(x);
     const label = x.startsWith("+") ? `<span class="kind">SKILL</span>${esc(x.slice(1))} +1` : esc(x);
-    return `<div class="line ideal ${ok ? "has" : "lacking"}"><i class="mark" title="${ok ? "Seu item tem" : "Seu item não tem"}">${ok ? "✓" : ""}</i><span>${label}</span><span class="pct">${ok ? "tem" : ""}</span></div>`;
+    return `<div class="line ideal ${ok ? "has" : "lacking"}"><i class="mark" title="${ok ? "Seu item tem" : "Seu item não tem"}"></i><span>${label}</span><span class="pct">${ok ? "tem" : ""}</span></div>`;
   }).join("");
   const back = `
-    <article class="tcard bis">
-      <div class="foil" aria-hidden="true"></div>
+    <article class="tcard bis" style="--i:${idx}">
+      <div class="foil" aria-hidden="true"></div><div class="sparks" aria-hidden="true"></div>
       <div class="face">
         <div class="slotname"><span>${esc(slot)}</span><span class="lvl">Ideal${build ? " · " + esc(build.title.split(" — ")[0]) : ""}</span></div>
         <header>
@@ -357,7 +390,7 @@ function itemCard(e, build, db, raceId) {
       </div>
       <div class="glare" aria-hidden="true"></div>
     </article>`;
-  return `<div class="flip" data-slot="${esc(e.slotPosName)}"><div class="flip-inner"><div class="side front">${front}</div><div class="side back">${back}</div></div></div>`;
+  return `<div class="flip" data-slot="${esc(e.slotPosName)}" style="--i:${idx}"><div class="flip-inner"><div class="side front">${front}</div><div class="side back">${back}</div></div></div>`;
 }
 
 // --- aba Build
