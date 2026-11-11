@@ -235,43 +235,129 @@ function tabGear(el, data, db) {
   const build = buildFor(data.profile);
   const items = [...data.equipment].sort((a, b) => SLOT_ORDER.indexOf(a.slotPosName) - SLOT_ORDER.indexOf(b.slotPosName));
   el.innerHTML = `
-    <div class="legend">
-      <span><i style="background:var(--good)"></i>Linha ótima para dano</span>
-      <span><i style="background:var(--mid)"></i>Linha ok</span>
-      <span><i style="background:var(--bad)"></i>Linha inútil para dano</span>
-      <span>Nota = valor das linhas do item comparado a 6 linhas perfeitas (${build ? "pesos da build do " + esc(data.profile.className) : "pesos genéricos de DPS"})</span>
+    <div class="gear-head">
+      <div class="legend">
+        <span><i style="background:var(--good)"></i>Ótima para dano</span>
+        <span><i style="background:var(--mid)"></i>Ok</span>
+        <span><i style="background:var(--bad)"></i>Inútil para dano</span>
+      </div>
+      <span class="spacer"></span>
+      <button class="ghost" id="flip-all">↻ Ver todos os ideais</button>
     </div>
+    <p class="muted small" style="margin:-6px 0 16px">% = relevância da linha para dano (${build ? "build do " + esc(data.profile.className) : "pesos genéricos de DPS"}).
+      Nota = linhas do item comparadas a 6 linhas perfeitas. Toque em <b>Ideal</b> para virar o card.</p>
     <div class="grid items">${items.map((e) => itemCard(e, build, db, data.profile.raceId)).join("")}</div>`;
+  bindCards(el);
+  let all = false;
+  el.querySelector("#flip-all").onclick = (ev) => {
+    all = !all;
+    el.querySelectorAll(".flip").forEach((f) => f.classList.toggle("flipped", all));
+    ev.currentTarget.textContent = all ? "↻ Ver meus itens" : "↻ Ver todos os ideais";
+  };
+}
+
+// Efeito holográfico (inclinação + brilho seguindo o ponteiro) e virar o card
+function bindCards(root) {
+  root.addEventListener("click", (e) => {
+    const t = e.target.closest(".turn");
+    if (t) t.closest(".flip").classList.toggle("flipped");
+  });
+  if (!matchMedia("(hover: hover) and (prefers-reduced-motion: no-preference)").matches) return;
+  root.addEventListener("pointermove", (e) => {
+    const c = e.target.closest(".tcard");
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    c.style.setProperty("--mx", `${x * 100}%`);
+    c.style.setProperty("--my", `${y * 100}%`);
+    c.style.setProperty("--ry", `${(x - 0.5) * 8}deg`);
+    c.style.setProperty("--rx", `${(0.5 - y) * 8}deg`);
+  });
+  root.addEventListener("pointerout", (e) => {
+    const c = e.target.closest(".tcard");
+    if (c && !c.contains(e.relatedTarget)) { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); }
+  });
+}
+
+// Linhas ideais do slot. Arcanas e slots sem tabela usam as skills de maior peso da build.
+function idealFor(e, build) {
+  if (SLOT_IDEAL[e.slotPosName]) return SLOT_IDEAL[e.slotPosName];
+  if (e.slotPosName.startsWith("Arcana") && build) {
+    return Object.entries(build.skillLineWeights).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => "+" + n);
+  }
+  return null;
 }
 
 function itemCard(e, build, db, raceId) {
   const d = e.detail || {};
   const sc = scoreItem(e, build);
   const next = upgradePath(e, db, raceId)[0];
-  const ideal = SLOT_IDEAL[e.slotPosName];
-  const main = (d.mainStats || []).map((s) => `${esc(s.name)} ${esc(s.value)}${s.extra && s.extra !== "0" ? ` <span class="ok">+${esc(s.extra)}</span>` : ""}`).join(" · ");
+  const ideal = idealFor(e, build);
+  const slot = SLOT_NAMES[e.slotPosName] || e.slotPosName;
+  const gradeName = d.gradeName || GRADE_NAMES[e.grade] || e.grade;
+  const scored = sc?.score != null;
+  const gradeCls = scored ? `grade-${sc.grade.replace("+", "plus")}` : "";
   const emptyStones = Math.max(0, (d.magicStoneSlotCount || 0) - (sc?.stones.length || 0));
-  return `<article class="item">
-    <div class="item-head">
-      <img class="icon g-${esc(e.grade)}" src="${esc(e.icon)}" alt="" loading="lazy" />
-      <div>
-        <div class="label">${esc(SLOT_NAMES[e.slotPosName] || e.slotPosName)}</div>
-        <div class="item-name t-${esc(e.grade)}">+${e.enchantLevel}${e.exceedLevel ? ` <span class="ok">★${e.exceedLevel}</span>` : ""} ${esc(e.name)}</div>
-        <div class="muted small">Nv ${d.level ?? "?"} · ${esc(d.gradeName || GRADE_NAMES[e.grade] || e.grade)}${d.maxEnchantLevel ? ` · máx +${d.maxEnchantLevel}` : ""}</div>
+  const has = (x) => (x.startsWith("+")
+    ? sc?.lines.some((l) => l.kind === "skill" && l.name === x.slice(1))
+    : sc?.lines.some((l) => l.kind === "stat" && l.name === x));
+  const matched = ideal ? ideal.filter(has).length : 0;
+
+  const mainStats = (d.mainStats || []).slice(0, 4).map((s) =>
+    `<span>${esc(s.name)} <b>${esc(s.value)}</b>${s.extra && s.extra !== "0" ? ` <span class="plus">+${esc(s.extra)}</span>` : ""}</span>`).join("");
+  const lines = (sc?.lines || []).map((l) => `
+    <div class="line ${weightClass(l.weight)}">
+      <span>${l.kind === "skill" ? '<span class="kind">SKILL</span>' : ""}${esc(l.name)}<span class="val">${esc(l.value)}</span></span>
+      <span class="pct" title="Relevância para dano">${l.weight * 10}%</span>
+      <div class="bar"><i style="width:${l.weight * 10}%"></i></div>
+    </div>`).join("");
+  const stones = (sc?.stones || []).map((s) => `<span class="gem ${weightClass(s.weight)}" title="${esc(s.name)} (${esc(GRADE_NAMES[s.grade] || s.grade)})">${esc(s.name)} ${esc(s.value)}</span>`).join("")
+    + `<span class="gem empty">encaixe vazio</span>`.repeat(emptyStones);
+
+  const front = `
+    <article class="tcard g-${esc(e.grade)} ${gradeCls}">
+      <div class="foil" aria-hidden="true"></div>
+      <div class="face">
+        <div class="slotname"><span>${esc(slot)}</span><span class="lvl">Nv ${d.level ?? "?"} · ${esc(gradeName)}</span></div>
+        <header>
+          <span class="picture"><img src="${esc(e.icon)}" alt="" loading="lazy" draggable="false" />
+            ${e.exceedLevel ? `<span class="exceed" title="Superação ${e.exceedLevel}">★${e.exceedLevel}</span>` : ""}
+            <span class="enchant" title="+${e.enchantLevel} de ${d.maxEnchantLevel || "?"}">+${e.enchantLevel}</span></span>
+          <div><b>${esc(e.name)}</b>${scored ? `<span class="facet"><small>Nota</small>${sc.score}</span>` : `<span class="note">máx +${d.maxEnchantLevel ?? "?"}</span>`}</div>
+          ${scored ? `<span class="letter ${sc.grade}">${sc.grade}</span>` : ""}
+        </header>
+        ${mainStats ? `<div class="mainstats">${mainStats}</div>` : ""}
+        ${lines ? `<div class="section-t"><span>Linhas</span><span>relevância</span></div>${lines}` : `<div class="unscored">Sem linhas aleatórias: item sem nota.</div>`}
+        ${stones ? `<div class="section-t"><span>Manastones</span></div><div class="gems">${stones}</div>` : ""}
+        ${ideal ? `<button class="turn" type="button"><span>${matched} de ${ideal.length} linhas ideais</span><span>↻ Ideal</span></button>` : ""}
       </div>
-      ${sc?.score != null ? `<span class="grade ${sc.grade}" title="${sc.score}/100">${sc.grade}</span>` : ""}
-    </div>
-    ${main ? `<div class="small muted">${main}</div>` : ""}
-    ${sc?.lines.length ? `<div><div class="label">Linhas</div><ul class="lines">
-      ${sc.lines.map((l) => `<li class="${weightClass(l.weight)}"><span>${l.kind === "skill" ? "Skill: " : ""}${esc(l.name)}</span><b>${esc(l.value)}</b></li>`).join("")}
-    </ul></div>` : ""}
-    ${sc?.stones.length || emptyStones ? `<div><div class="label">Manastones</div><ul class="lines">
-      ${sc.stones.map((s) => `<li class="${weightClass(s.weight)}"><span class="t-${esc(s.grade)}">${esc(s.name)}</span><b>${esc(s.value)}</b></li>`).join("")}
-      ${"<li class='empty'><span>encaixe vazio</span></li>".repeat(emptyStones)}
-    </ul></div>` : ""}
-    ${ideal ? `<div class="ideal"><b>Ideal no slot:</b> ${ideal.map((x) => esc(x.startsWith("+") ? `+1 ${x.slice(1)}` : x)).join(" · ")}</div>` : ""}
-    ${next ? `<div class="next">Próximo upgrade: ${esc(next.n)} (nv ${next.lv}, ${next.t.toUpperCase()})</div>` : ""}
-  </article>`;
+      <div class="glare" aria-hidden="true"></div>
+    </article>`;
+  if (!ideal) return `<div class="flip"><div class="flip-inner"><div class="side front">${front}</div></div></div>`;
+
+  const idealLines = ideal.map((x) => {
+    const ok = has(x);
+    const label = x.startsWith("+") ? `<span class="kind">SKILL</span>${esc(x.slice(1))} +1` : esc(x);
+    return `<div class="line ideal ${ok ? "has" : "lacking"}"><i class="mark" title="${ok ? "Seu item tem" : "Seu item não tem"}">${ok ? "✓" : ""}</i><span>${label}</span><span class="pct">${ok ? "tem" : ""}</span></div>`;
+  }).join("");
+  const back = `
+    <article class="tcard bis">
+      <div class="foil" aria-hidden="true"></div>
+      <div class="face">
+        <div class="slotname"><span>${esc(slot)}</span><span class="lvl">Ideal${build ? " · " + esc(build.title.split(" — ")[0]) : ""}</span></div>
+        <header>
+          <span class="picture star" aria-hidden="true">★</span>
+          <div><b>Ideal para ${esc(slot.toLowerCase())}</b><span class="note">Melhor no slot</span></div>
+          <span class="letter bis">BiS</span>
+        </header>
+        <div class="section-t"><span>Linhas a buscar</span></div>
+        ${idealLines}
+        ${next ? `<div class="upgrade"><small>Próximo upgrade</small>${esc(next.n)} · nv ${next.lv} ${next.t.toUpperCase()}</div>` : ""}
+        <button class="turn" type="button"><span>Seu item tem ${matched} de ${ideal.length}</span><span>↻ Seu item</span></button>
+      </div>
+      <div class="glare" aria-hidden="true"></div>
+    </article>`;
+  return `<div class="flip" data-slot="${esc(e.slotPosName)}"><div class="flip-inner"><div class="side front">${front}</div><div class="side back">${back}</div></div></div>`;
 }
 
 // --- aba Build
